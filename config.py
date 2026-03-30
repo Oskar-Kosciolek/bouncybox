@@ -18,3 +18,7 @@ class Config:
 
     # Fizyka odbicia
     restitution: float = 1.0  # 1.0 = idealne odbicie, 0.5 = traci połowę energii
+
+    # System pudełek
+    shrink_step: int = 15
+    wall_anim_speed: float = 300.0

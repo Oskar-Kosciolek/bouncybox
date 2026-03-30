@@ -1,6 +1,7 @@
 import pygame
 from config import Config
 
+
 class Ball:
     def __init__(self, x: float, y: float, config: Config):
         self.config = config
@@ -17,7 +18,7 @@ class Ball:
     def color(self):
         return (230, 80, 80)
 
-    def update(self, dt: float, box_rect: pygame.Rect) -> None:
+    def update(self, dt: float) -> None:
         # Grawitacja — dodaje przyspieszenie do prędkości pionowej
         if self.config.gravity_enabled:
             self.vy += self.config.gravity_strength * dt
@@ -25,20 +26,11 @@ class Ball:
         self.x += self.vx * dt
         self.y += self.vy * dt
 
-        if self.x - self.radius < box_rect.left:
-            self.x = box_rect.left + self.radius
+    def bounce(self, side: str) -> None:
+        """Odbicie od ściany pudełka — odwraca odpowiedni składnik prędkości."""
+        if side in ("left", "right"):
             self.vx *= -self.config.restitution
-
-        if self.x + self.radius > box_rect.right:
-            self.x = box_rect.right - self.radius
-            self.vx *= -self.config.restitution
-
-        if self.y - self.radius < box_rect.top:
-            self.y = box_rect.top + self.radius
-            self.vy *= -self.config.restitution
-
-        if self.y + self.radius > box_rect.bottom:
-            self.y = box_rect.bottom - self.radius
+        elif side in ("top", "bottom"):
             self.vy *= -self.config.restitution
 
     def reset(self, box_rect: pygame.Rect) -> None:
