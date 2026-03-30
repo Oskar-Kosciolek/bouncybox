@@ -2,6 +2,7 @@ import pygame
 from ball import Ball
 from box import Box
 from config import Config
+from particles import ParticleSystem
 from settings_panel import SettingsPanel
 
 WINDOW_SIZE = (480, 480)
@@ -21,7 +22,9 @@ def main() -> None:
 
     current_margin = config.box_margin
     boxes: list[Box] = [Box(current_margin, WINDOW_SIZE, config)]
-    ball = Ball(boxes[0].target_rect.centerx, boxes[0].target_rect.centery, config)
+    particles = ParticleSystem()
+    spawn_timer: float = 0.0
+    ball = Ball(boxes[0].rect.centerx, boxes[0].rect.centery, config)
 
     running = True
     while running:
@@ -40,7 +43,9 @@ def main() -> None:
                 if event.key == pygame.K_r:
                     current_margin = config.box_margin
                     boxes = [Box(current_margin, WINDOW_SIZE, config)]
-                    ball.reset(boxes[0].target_rect)
+                    particles = ParticleSystem()
+                    spawn_timer = 0.0
+                    ball.reset(boxes[0].rect)
 
             panel.handle_event(event, offset_x=panel_offset_x)
 
@@ -50,39 +55,36 @@ def main() -> None:
         for box in boxes:
             box.update(dt)
 
-        # Kolizja tylko z aktywnym (pierwszym) pudełkiem
+        # Timer spawnu — niezależny od kolizji
+        spawn_timer += dt
+        if spawn_timer >= config.box_spawn_interval:
+            current_margin += config.shrink_step
+            min_playable = ball.radius * 6
+            if WINDOW_SIZE[0] - current_margin * 2 > min_playable:
+                boxes.append(Box(current_margin, WINDOW_SIZE, config))
+            spawn_timer = 0.0
+
+        # Kolizja tylko z ostatnim (najmłodszym, najbliższym środka) pudełkiem
         if boxes:
-            active_box = boxes[0]
-            if active_box.is_ready():
-                side = active_box.check_collision(ball)
-                if side is not None:
-                    active_box.hit_wall(side)
-                    ball.bounce(side)
+            active_box = boxes[-1]
+            side = active_box.check_collision(ball)
+            if side is not None:
+                ball.bounce(side)
+                # Korekta pozycji piłki żeby nie wchodziła w ścianę
+                if side == "left":
+                    ball.x = active_box.rect.left + 6 + ball.radius
+                elif side == "right":
+                    ball.x = active_box.rect.right - 6 - ball.radius
+                elif side == "top":
+                    ball.y = active_box.rect.top + 6 + ball.radius
+                elif side == "bottom":
+                    ball.y = active_box.rect.bottom - 6 - ball.radius
+                # Zniszcz pudełko i emituj cząsteczki
+                particles.explode(active_box.rect, active_box.color)
+                active_box.alive = False
+                boxes.remove(active_box)
 
-                    # Korekta pozycji piłki żeby nie wchodziła w ścianę
-                    t = active_box.target_rect
-                    tk = Box.THICKNESS
-                    if side == "top":
-                        ball.y = t.top + tk + ball.radius
-                    elif side == "bottom":
-                        ball.y = t.bottom - tk - ball.radius
-                    elif side == "left":
-                        ball.x = t.left + tk + ball.radius
-                    elif side == "right":
-                        ball.x = t.right - tk - ball.radius
-
-                    # Nowe pudełko po wybiciu wszystkich ścian
-                    if active_box.all_dead():
-                        current_margin += config.shrink_step
-                        min_size = ball.radius * 4
-                        if WINDOW_SIZE[0] - current_margin * 2 > min_size:
-                            boxes.append(Box(current_margin, WINDOW_SIZE, config))
-
-        # Usuń w pełni zanikłe martwe pudełka
-        boxes = [
-            b for b in boxes
-            if not (b.all_dead() and all(w["alpha"] == 0 for w in b.walls))
-        ]
+        particles.update(dt)
 
         # --- Rysowanie ---
         screen.fill(BG_COLOR)
@@ -90,6 +92,7 @@ def main() -> None:
         for box in boxes:
             box.draw(screen)
 
+        particles.draw(screen)
         ball.draw(screen)
 
         # Hint — tylko gdy panel zamknięty

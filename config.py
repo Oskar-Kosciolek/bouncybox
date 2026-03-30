@@ -22,3 +22,4 @@ class Config:
     # System pudełek
     shrink_step: int = 15
     wall_anim_speed: float = 300.0
+    box_spawn_interval: float = 0.3

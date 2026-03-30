@@ -27,6 +27,7 @@ class SettingsPanel:
             ("Rozmiar piłki",   "ball_radius",         5,    40,  False),
             ("Margines pudełka","box_margin",          10,   120,  False),
             ("Restytucja",      "restitution",        0.3,   1.0,  True),
+            ("Odstęp kwadratów (s)", "box_spawn_interval", 0.5, 10.0, True),
         ]
 
     def toggle(self):
