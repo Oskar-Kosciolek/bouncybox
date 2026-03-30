@@ -21,7 +21,9 @@ def main() -> None:
     clock = pygame.time.Clock()
 
     config = Config()
-    panel = SettingsPanel(config)
+    panel = SettingsPanel(config, window_height=WINDOW_SIZE[1])
+    panel_offset_x = WINDOW_SIZE[0] - SettingsPanel.PANEL_WIDTH
+
     box_rect = make_box_rect(config)
     ball = Ball(box_rect.centerx, box_rect.centery, config)
 
@@ -37,33 +39,30 @@ def main() -> None:
                 if event.key == pygame.K_ESCAPE:
                     running = False
                 if event.key == pygame.K_m:
-                    if panel.active:
-                        panel.close()
-                    else:
-                        panel.open()
-                # R = reset piłki po zmianie ustawień
+                    panel.toggle()
                 if event.key == pygame.K_r:
                     box_rect = make_box_rect(config)
                     ball.reset(box_rect)
 
-            panel.handle_event(event)
+            panel.handle_event(event, offset_x=panel_offset_x)
 
         ball.update(dt, box_rect)
 
+        # Rysowanie
         screen.fill(BG_COLOR)
         pygame.draw.rect(screen, BOX_COLOR, box_rect, width=2)
         ball.draw(screen)
 
-        # Podpowiedź sterowania
-        font = pygame.font.SysFont("segoeui", 13)
-        hint = font.render("M — ustawienia   R — reset", True, (80, 80, 100))
-        screen.blit(hint, (10, WINDOW_SIZE[1] - 20))
+        # Hint — tylko gdy panel zamknięty
+        if not panel.active:
+            font = pygame.font.SysFont("segoeui", 13)
+            hint = font.render("M — ustawienia", True, (70, 70, 90))
+            screen.blit(hint, (10, WINDOW_SIZE[1] - 18))
+
+        # Panel na wierzchu
+        panel.draw(screen, offset_x=panel_offset_x)
 
         pygame.display.flip()
-
-        # Odśwież panel jeśli otwarty
-        if panel.active:
-            panel.draw()
 
     pygame.quit()
 
