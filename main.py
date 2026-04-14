@@ -1,8 +1,8 @@
 import pygame
 from ball import Ball
-from box import Box
-from config import Config
+from circle_ring import CircleRing
 from particles import ParticleSystem
+from config import Config
 from settings_panel import SettingsPanel
 
 WINDOW_SIZE = (480, 480)
@@ -15,16 +15,16 @@ def main() -> None:
     screen = pygame.display.set_mode(WINDOW_SIZE)
     pygame.display.set_caption("bouncybox")
     clock = pygame.time.Clock()
+    font = pygame.font.SysFont("segoeui", 13)
 
     config = Config()
     panel = SettingsPanel(config, window_height=WINDOW_SIZE[1])
-    panel_offset_x = WINDOW_SIZE[0] - SettingsPanel.PANEL_WIDTH
+    cx, cy = WINDOW_SIZE[0] // 2, WINDOW_SIZE[1] // 2
 
-    current_margin = config.box_margin
-    boxes: list[Box] = [Box(current_margin, WINDOW_SIZE, config)]
     particles = ParticleSystem()
+    rings: list[CircleRing] = [CircleRing(config, WINDOW_SIZE)]
+    ball = Ball(cx, cy, config)
     spawn_timer: float = 0.0
-    ball = Ball(boxes[0].rect.centerx, boxes[0].rect.centery, config)
 
     running = True
     while running:
@@ -34,75 +34,58 @@ def main() -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
                 if event.key == pygame.K_m:
-                    panel.toggle()
+                    panel.active = not panel.active
                 if event.key == pygame.K_r:
-                    current_margin = config.box_margin
-                    boxes = [Box(current_margin, WINDOW_SIZE, config)]
+                    rings = [CircleRing(config, WINDOW_SIZE)]
                     particles = ParticleSystem()
                     spawn_timer = 0.0
-                    ball.reset(boxes[0].rect)
-
-            panel.handle_event(event, offset_x=panel_offset_x)
+                    ball.reset(cx, cy)
+            panel.handle_event(event)
 
         # --- Logika ---
         ball.update(dt)
 
-        for box in boxes:
-            box.update(dt)
-
-        # Timer spawnu — niezależny od kolizji
+        # Spawn nowych okręgów co ring_spawn_interval sekund
         spawn_timer += dt
-        if spawn_timer >= config.box_spawn_interval:
-            current_margin += config.shrink_step
-            min_playable = ball.radius * 6
-            if WINDOW_SIZE[0] - current_margin * 2 > min_playable:
-                boxes.append(Box(current_margin, WINDOW_SIZE, config))
+        if spawn_timer >= config.ring_spawn_interval:
+            rings.append(CircleRing(config, WINDOW_SIZE))
             spawn_timer = 0.0
 
-        # Kolizja tylko z ostatnim (najmłodszym, najbliższym środka) pudełkiem
-        if boxes:
-            active_box = boxes[-1]
-            side = active_box.check_collision(ball)
-            if side is not None:
-                ball.bounce(side)
-                # Korekta pozycji piłki żeby nie wchodziła w ścianę
-                if side == "left":
-                    ball.x = active_box.rect.left + 6 + ball.radius
-                elif side == "right":
-                    ball.x = active_box.rect.right - 6 - ball.radius
-                elif side == "top":
-                    ball.y = active_box.rect.top + 6 + ball.radius
-                elif side == "bottom":
-                    ball.y = active_box.rect.bottom - 6 - ball.radius
-                # Zniszcz pudełko i emituj cząsteczki
-                particles.explode(active_box.rect, active_box.color)
-                active_box.alive = False
-                boxes.remove(active_box)
+        # Aktualizuj okręgi
+        for ring in rings:
+            ring.update(dt)
+
+        # Kolizje — tylko z ostatnim (najbliższym środka) żywym okręgiem
+        for ring in reversed(rings):
+            if ring.alive:
+                was_alive = ring.alive
+                ring.check_collision(ball)
+                if was_alive and not ring.alive and not ring.exploded:
+                    particles.explode_ring(ring.cx, ring.cy, ring.radius, ring.color)
+                    ring.exploded = True
+                break  # tylko jeden okrąg na klatkę
+
+        # Usuń okręgi całkowicie przezroczyste
+        rings = [r for r in rings if not r.is_faded()]
 
         particles.update(dt)
 
         # --- Rysowanie ---
         screen.fill(BG_COLOR)
-
-        for box in boxes:
-            box.draw(screen)
-
+        for ring in rings:
+            ring.draw(screen)
         particles.draw(screen)
         ball.draw(screen)
 
-        # Hint — tylko gdy panel zamknięty
-        if not panel.active:
-            font = pygame.font.SysFont("segoeui", 13)
-            hint = font.render("M — ustawienia", True, (70, 70, 90))
-            screen.blit(hint, (10, WINDOW_SIZE[1] - 18))
+        hint = font.render("M — ustawienia   R — reset", True, (80, 80, 100))
+        screen.blit(hint, (10, WINDOW_SIZE[1] - 20))
 
-        # Panel na wierzchu
-        panel.draw(screen, offset_x=panel_offset_x)
+        if panel.active:
+            panel.draw(screen)
 
         pygame.display.flip()
 

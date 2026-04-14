@@ -1,19 +1,19 @@
-import random
-import math
 import pygame
+import math
+import random
 
 
 class Particle:
     def __init__(self, x: float, y: float, vx: float, vy: float,
-                 color: tuple[int, int, int], lifetime: float):
-        self.x = x
-        self.y = y
-        self.vx = vx
-        self.vy = vy
+                 color: tuple, lifetime: float) -> None:
+        self.x = float(x)
+        self.y = float(y)
+        self.vx = float(vx)
+        self.vy = float(vy)
         self.color = color
         self.lifetime = lifetime
         self.age = 0.0
-        self.size = random.randint(2, 5)
+        self.size = random.randint(2, 4)
 
     def update(self, dt: float) -> bool:
         """Aktualizuje pozycję i wiek. Zwraca True dopóki cząsteczka żyje."""
@@ -23,44 +23,31 @@ class Particle:
         return self.age < self.lifetime
 
     def draw(self, surface: pygame.Surface) -> None:
-        alpha = 1.0 - (self.age / self.lifetime)  # 1.0 → 0.0
-        r, g, b = self.color
-        faded: tuple[int, int, int] = (int(r * alpha), int(g * alpha), int(b * alpha))
-        pygame.draw.circle(surface, faded, (int(self.x), int(self.y)), self.size)
+        if self.age >= self.lifetime:
+            return
+        alpha = 1.0 - (self.age / self.lifetime)
+        color = tuple(int(c * alpha) for c in self.color)
+        pygame.draw.circle(surface, color, (int(self.x), int(self.y)), self.size)
 
 
 class ParticleSystem:
-    def __init__(self):
+    def __init__(self) -> None:
         self.particles: list[Particle] = []
 
-    def explode(self, rect: pygame.Rect, color: tuple[int, int, int]) -> None:
-        """Emituje 60 cząsteczek (15 na każdej krawędzi) po zniszczeniu kwadratu."""
-        # Zbierz punkty na każdej krawędzi
-        points: list[tuple[float, float]] = []
-        for i in range(15):
-            t = i / 14
-            points.append((rect.left + t * rect.width, float(rect.top)))
-            points.append((rect.left + t * rect.width, float(rect.bottom)))
-            points.append((float(rect.left),  rect.top + t * rect.height))
-            points.append((float(rect.right), rect.top + t * rect.height))
-
-        cx, cy = rect.centerx, rect.centery
-        for x, y in points:
-            dx = x - cx
-            dy = y - cy
-            dist = max(math.sqrt(dx * dx + dy * dy), 1.0)
-            speed = random.uniform(80, 250)
-            vx = (dx / dist) * speed + random.uniform(-30, 30)
-            vy = (dy / dist) * speed + random.uniform(-30, 30)
-            # Losowa wariacja koloru ±30 per kanał
-            r, g, b = color
-            varied: tuple[int, int, int] = (
-                max(0, min(255, r + random.randint(-30, 30))),
-                max(0, min(255, g + random.randint(-30, 30))),
-                max(0, min(255, b + random.randint(-30, 30))),
-            )
-            lifetime = random.uniform(0.4, 1.0)
-            self.particles.append(Particle(x, y, vx, vy, varied, lifetime))
+    def explode_ring(self, cx: float, cy: float, radius: float, color: tuple) -> None:
+        """Emituje 80 cząsteczek wzdłuż okręgu o danym promieniu i środku."""
+        for _ in range(80):
+            angle = random.uniform(0, math.pi * 2)
+            px = cx + math.cos(angle) * radius
+            py = cy + math.sin(angle) * radius
+            speed = random.uniform(60, 220)
+            vx = math.cos(angle) * speed + random.uniform(-20, 20)
+            vy = math.sin(angle) * speed + random.uniform(-20, 20)
+            r = min(255, int(color[0] + random.randint(-30, 30)))
+            g = min(255, int(color[1] + random.randint(-30, 30)))
+            b = min(255, int(color[2] + random.randint(-30, 30)))
+            lifetime = random.uniform(0.4, 1.2)
+            self.particles.append(Particle(px, py, vx, vy, (r, g, b), lifetime))
 
     def update(self, dt: float) -> None:
         self.particles = [p for p in self.particles if p.update(dt)]
