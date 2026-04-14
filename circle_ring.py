@@ -14,6 +14,7 @@ class CircleRing:
         self.thickness = 4
         self.color = (60, 120, 200)
         self.exploded = False  # flaga — cząsteczki emitowane tylko raz
+        self.min_radius: float = config.ring_min_radius
 
         # Fade out po zniszczeniu
         self.alpha: float = 255.0
@@ -33,8 +34,8 @@ class CircleRing:
 
         # Zmniejszaj promień w kierunku środka
         self.radius -= self.config.ring_shrink_speed * dt
-        if self.radius <= self.config.ring_min_radius:
-            self.radius = self.config.ring_min_radius
+        if self.radius <= self.min_radius:
+            self.radius = self.min_radius
 
         # Ruch dziur jeśli włączony
         if self.config.hole_moving:
@@ -59,32 +60,42 @@ class CircleRing:
         """
         if not self.alive:
             return False
-        if ball.collision_cooldown > 0:
-            return False
 
         dx = ball.x - self.cx
         dy = ball.y - self.cy
         dist = math.sqrt(dx * dx + dy * dy)
+        if dist < 0.001:
+            return False
 
-        # Kolizja tylko gdy piłka jest blisko powierzchni okręgu
+        # Kolizja gdy piłka dotyka powierzchni okręgu od wewnątrz lub zewnątrz
         if abs(dist - self.radius) > ball.radius + self.thickness:
             return False
 
         angle = math.degrees(math.atan2(dy, dx)) % 360
 
         if self.is_point_in_hole(angle):
-            # Piłka trafiła w dziurę — zniszcz okrąg bez odbicia
             self.alive = False
             return False
 
-        # Pełna część okręgu — odbij piłkę
-        nx = dx / max(dist, 0.001)
-        ny = dy / max(dist, 0.001)
-        ball.bounce_radial(nx, ny)
+        if ball.collision_cooldown > 0:
+            return False
 
-        # Korekta pozycji — wypchnij piłkę na zewnątrz okręgu
-        ball.x = self.cx + nx * (self.radius + ball.radius + self.thickness + 1)
-        ball.y = self.cy + ny * (self.radius + ball.radius + self.thickness + 1)
+        # Normalna zawsze skierowana OD środka okręgu DO piłki
+        nx = dx / dist
+        ny = dy / dist
+
+        # Piłka wewnątrz okręgu — wypchnij do środka (zmniejsz dist do radius - ball.radius - 1)
+        if dist < self.radius:
+            ball.x = self.cx + nx * (self.radius - ball.radius - self.thickness - 1)
+            ball.y = self.cy + ny * (self.radius - ball.radius - self.thickness - 1)
+            # Odbij do środka: normalna wskazuje do środka = -nx, -ny
+            ball.bounce_radial(-nx, -ny)
+        else:
+            # Piłka na zewnątrz — wypchnij na zewnątrz
+            ball.x = self.cx + nx * (self.radius + ball.radius + self.thickness + 1)
+            ball.y = self.cy + ny * (self.radius + ball.radius + self.thickness + 1)
+            ball.bounce_radial(nx, ny)
+
         return True
 
     def is_faded(self) -> bool:

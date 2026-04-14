@@ -27,7 +27,7 @@ class Ball:
         dot = self.vx * nx + self.vy * ny
         self.vx = (self.vx - 2 * dot * nx) * self.config.restitution
         self.vy = (self.vy - 2 * dot * ny) * self.config.restitution
-        self.collision_cooldown = 0.15
+        self.collision_cooldown = 0.05
 
     def reset(self, x: float, y: float) -> None:
         self.x = x
