@@ -60,17 +60,20 @@ def main() -> None:
             # Spawn nowych okręgów co ring_spawn_interval sekund
             spawn_timer += dt
             if spawn_timer >= config.ring_spawn_interval:
-                new_ring = CircleRing(config, WINDOW_SIZE)
-                alive_radii = [r.radius for r in rings if r.alive]
-                if alive_radii:
-                    smallest = min(alive_radii)
-                    new_ring.min_radius = max(smallest - 35, ball.radius * 3)
-                rings.append(new_ring)
+                rings.append(CircleRing(config, WINDOW_SIZE))
                 spawn_timer = 0.0
 
             # Aktualizuj okręgi
             for ring in rings:
                 ring.update(dt)
+
+            # Pilnuj minimalnych odległości między okręgami
+            alive_rings = sorted([r for r in rings if r.alive], key=lambda r: r.radius)
+            min_r = ball.radius * 3
+            for ring in alive_rings:
+                if ring.radius < min_r:
+                    ring.radius = min_r
+                min_r = ring.radius + 35
 
             # Kolizje — sprawdzaj WSZYSTKIE żywe okręgi
             for ring in reversed(rings):

@@ -14,7 +14,6 @@ class CircleRing:
         self.thickness = 4
         self.color = (60, 120, 200)
         self.exploded = False  # flaga — cząsteczki emitowane tylko raz
-        self.min_radius: float = config.ring_min_radius
 
         # Fade out po zniszczeniu
         self.alpha: float = 255.0
@@ -28,19 +27,15 @@ class CircleRing:
 
     def update(self, dt: float) -> None:
         if not self.alive:
-            # Zanikanie po zniszczeniu
             self.alpha = max(0.0, self.alpha - 400 * dt)
             return
 
-        # Zmniejszaj promień w kierunku środka
-        self.radius -= self.config.ring_shrink_speed * dt
-        if self.radius <= self.min_radius:
-            self.radius = self.min_radius
-
-        # Ruch dziur jeśli włączony
         if self.config.hole_moving:
             self.holes = [(h + self.config.hole_move_speed * dt) % 360
                           for h in self.holes]
+
+        # Zmniejszanie — limit przekazywany z zewnątrz
+        self.radius -= self.config.ring_shrink_speed * dt
 
     def is_point_in_hole(self, angle_deg: float) -> bool:
         """Sprawdź czy kąt mieści się w którejś dziurze."""
