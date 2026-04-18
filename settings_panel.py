@@ -12,9 +12,8 @@ class SettingsPanel:
     SLIDER_FG = (100, 140, 220)
     FONT_SIZE = 13
 
-    def __init__(self, config: Config, window_height: int = 480):
+    def __init__(self, config: Config):
         self.config = config
-        self.window_height = window_height
         self.active = False
         self._dragging = None
         self._font = None
@@ -42,7 +41,7 @@ class SettingsPanel:
             self._font = pygame.font.SysFont("segoeui", self.FONT_SIZE)
         return self._font
 
-    def handle_event(self, event, offset_x: int = 0) -> bool:
+    def handle_event(self, event, offset_x: int = 0, window_h: int = 480) -> bool:
         """
         offset_x: x początku panelu w przestrzeni okna.
         Zwraca True jeśli event skonsumowany.
@@ -81,14 +80,14 @@ class SettingsPanel:
 
         return False
 
-    def draw(self, screen: pygame.Surface, offset_x: int = 0):
+    def draw(self, screen: pygame.Surface, offset_x: int = 0, window_h: int = 480):
         if not self.active:
             return
 
         font = self._get_font()
 
         # Surface z alpha — przezroczystość tła panelu
-        panel = pygame.Surface((self.PANEL_WIDTH, self.window_height), pygame.SRCALPHA)
+        panel = pygame.Surface((self.PANEL_WIDTH, window_h), pygame.SRCALPHA)
         panel.fill(self.BG_COLOR)
 
         # Tytuł
@@ -114,7 +113,7 @@ class SettingsPanel:
 
         # Linia oddzielająca panel od gry
         pygame.draw.line(screen, (60, 60, 90),
-                         (offset_x, 0), (offset_x, self.window_height), 1)
+                         (offset_x, 0), (offset_x, window_h), 1)
 
     # --- Geometria (współrzędne lokalne wewnątrz panelu) ---
 

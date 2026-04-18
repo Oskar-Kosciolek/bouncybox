@@ -12,14 +12,15 @@ BG_COLOR = (18, 18, 24)
 
 def main() -> None:
     pygame.init()
-    screen = pygame.display.set_mode(WINDOW_SIZE)
+    screen = pygame.display.set_mode(WINDOW_SIZE, pygame.RESIZABLE)
     pygame.display.set_caption("bouncybox")
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("segoeui", 13)
 
     config = Config()
-    panel = SettingsPanel(config, window_height=WINDOW_SIZE[1])
-    cx, cy = WINDOW_SIZE[0] // 2, WINDOW_SIZE[1] // 2
+    panel = SettingsPanel(config)
+    game_w, game_h = WINDOW_SIZE
+    cx, cy = game_w // 2, game_h // 2
 
     particles = ParticleSystem()
     rings: list[CircleRing] = [CircleRing(config, WINDOW_SIZE)]
@@ -35,32 +36,35 @@ def main() -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            if event.type == pygame.VIDEORESIZE:
+                game_w, game_h = event.w, event.h
+                screen = pygame.display.set_mode((game_w, game_h), pygame.RESIZABLE)
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
                 if event.key == pygame.K_m:
                     panel.active = not panel.active
                 if event.key == pygame.K_r:
-                    rings = [CircleRing(config, WINDOW_SIZE)]
+                    rings = [CircleRing(config, (game_w, game_h))]
                     particles = ParticleSystem()
                     spawn_timer = 0.0
                     game_won = False
                     ball.reset(cx, cy)
-            panel.handle_event(event)
+            panel.handle_event(event, window_h=game_h)
 
         # --- Logika ---
         if not game_won:
             ball.update(dt)
 
             margin = ball.radius
-            if (ball.x < -margin or ball.x > WINDOW_SIZE[0] + margin or
-                    ball.y < -margin or ball.y > WINDOW_SIZE[1] + margin):
+            if (ball.x < -margin or ball.x > game_w + margin or
+                    ball.y < -margin or ball.y > game_h + margin):
                 game_won = True
 
             # Spawn nowych okręgów co ring_spawn_interval sekund
             spawn_timer += dt
             if spawn_timer >= config.ring_spawn_interval:
-                rings.append(CircleRing(config, WINDOW_SIZE))
+                rings.append(CircleRing(config, (game_w, game_h)))
                 spawn_timer = 0.0
 
             # Aktualizuj okręgi
@@ -101,18 +105,18 @@ def main() -> None:
         if game_won:
             win_font = pygame.font.SysFont("segoeui", 64, bold=True)
             win_text = win_font.render("Win!", True, (255, 220, 80))
-            rect = win_text.get_rect(center=(WINDOW_SIZE[0] // 2, WINDOW_SIZE[1] // 2))
+            rect = win_text.get_rect(center=(game_w // 2, game_h // 2))
             screen.blit(win_text, rect)
             sub_font = pygame.font.SysFont("segoeui", 18)
             sub = sub_font.render("Naciśnij R aby zagrać ponownie", True, (180, 180, 200))
-            sub_rect = sub.get_rect(center=(WINDOW_SIZE[0] // 2, WINDOW_SIZE[1] // 2 + 60))
+            sub_rect = sub.get_rect(center=(game_w // 2, game_h // 2 + 60))
             screen.blit(sub, sub_rect)
 
         hint = font.render("M — ustawienia   R — reset", True, (80, 80, 100))
-        screen.blit(hint, (10, WINDOW_SIZE[1] - 20))
+        screen.blit(hint, (10, game_h - 20))
 
         if panel.active:
-            panel.draw(screen)
+            panel.draw(screen, window_h=game_h)
 
         pygame.display.flip()
 
